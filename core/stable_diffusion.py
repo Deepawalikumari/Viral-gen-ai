@@ -37,7 +37,9 @@ def generate_image(prompt: str) -> str:
     )
 
     if response.status_code != 200:
-        raise Exception(f"API Error: {response.status_code}")
+         print("Status Code:", response.status_code)
+         print("Response:", response.text)
+         raise Exception(f"API Error: {response.status_code}")
 
     # Save image
     filename = f"{uuid.uuid4().hex}.png"
