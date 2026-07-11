@@ -11,35 +11,26 @@ def generate_marketing_copy(
     platform: str = "instagram",
     persona: str = "witty"
 ) -> dict:
-    """
-    Generate platform-specific marketing copy
-    with brand voice control.
-    """
-
     llm = ChatGroq(
-       model="llama-3.3-70b-versatile",
-        temperature=0.7,    # higher = more creative
+        model="llama-3.3-70b-versatile",
+        temperature=0.7,
     )
 
-    # Get persona system prompt
     system_prompt = BRAND_PERSONAS.get(
         persona,
         BRAND_PERSONAS["witty"]
     )
 
-    # Get platform template
     platform_template = PLATFORM_TEMPLATES.get(
         platform,
         PLATFORM_TEMPLATES["instagram"]
     )
 
-    # Fill template with brief and persona
     user_prompt = platform_template.format(
         brief=brief,
         persona=persona.upper()
     )
 
-    # Generate copy
     messages = [
         SystemMessage(content=system_prompt),
         HumanMessage(content=user_prompt)
