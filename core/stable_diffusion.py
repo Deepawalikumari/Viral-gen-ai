@@ -1,4 +1,3 @@
-
 # core/stable_diffusion.py
 import requests
 import uuid
@@ -14,22 +13,21 @@ def generate_image(prompt: str) -> str:
     No API key needed! Free!
     """
     print(f"🎨 Generating image...")
-    print(f"Prompt: {prompt[:80]}...")
 
     # Encode prompt for URL
     encoded_prompt = quote(prompt)
 
-    # Pollinations AI URL
+    # Pollinations AI with turbo model
     url = f"https://image.pollinations.ai/prompt/{encoded_prompt}"
 
     params = {
         "width": 512,
         "height": 512,
+        "model": "turbo",    # ← fastest model
         "nologo": "true",
-        "enhance": "true"
+        "enhance": "false"   # ← skip enhancement = faster
     }
 
-    # Download image
     response = requests.get(
         url,
         params=params,
@@ -37,11 +35,8 @@ def generate_image(prompt: str) -> str:
     )
 
     if response.status_code != 200:
-         print("Status Code:", response.status_code)
-         print("Response:", response.text)
-         raise Exception(f"API Error: {response.status_code}")
+        raise Exception(f"API Error: {response.status_code}")
 
-    # Save image
     filename = f"{uuid.uuid4().hex}.png"
     filepath = os.path.join(OUTPUT_DIR, filename)
 

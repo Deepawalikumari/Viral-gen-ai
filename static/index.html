@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ViralGen AI 🎨</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        .header {
+            background: #1e293b;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #334155;
+        }
+        .header h1 { font-size: 2rem; color: #f472b6; }
+        .header p { color: #94a3b8; margin-top: 5px; }
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #334155;
+        }
+        .card h2 { color: #f472b6; margin-bottom: 15px; }
+        input, select, textarea {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 10px;
+            color: #e2e8f0;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+        .btn {
+            background: #f472b6;
+            color: #0f172a;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            font-size: 1rem;
+        }
+        .btn:hover { background: #ec4899; }
+        .btn:disabled {
+            background: #334155;
+            color: #64748b;
+            cursor: not-allowed;
+        }
+        .result-box {
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 100px;
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+        }
+        .image-box {
+            text-align: center;
+            margin-top: 15px;
+        }
+        .image-box img {
+            max-width: 100%;
+            border-radius: 8px;
+            display: none;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+        }
+        .status.loading { background: #1e3a5f; color: #38bdf8; }
+        .status.success { background: #064e3b; color: #34d399; }
+        .status.error { background: #450a0a; color: #f87171; }
+        .history-item {
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+        }
+        .full-width { grid-column: 1 / -1; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🎨 ViralGen AI</h1>
+    <p>Multi-Modal Social Media Content Generator</p>
+</div>
+
+<div class="container">
+
+    <!-- Input Section -->
+    <div class="card">
+        <h2>✍️ Create Content</h2>
+        <input
+            type="text"
+            id="brief"
+            placeholder="Enter your brief (e.g. red running shoes)"
+        />
+        <select id="platform">
+            <option value="instagram">Instagram</option>
+            <option value="linkedin">LinkedIn</option>
+            <option value="twitter">Twitter</option>
+        </select>
+        <select id="persona">
+            <option value="witty">Witty</option>
+            <option value="professional">Professional</option>
+            <option value="urgent">Urgent</option>
+            <option value="inspirational">Inspirational</option>
+        </select>
+        <button class="btn" id="generate-btn" onclick="generateContent()">
+            🚀 Generate Content
+        </button>
+        <div class="status" id="status-box"></div>
+    </div>
+
+    <!-- Result Section -->
+    <div class="card">
+        <h2>📝 Marketing Copy</h2>
+        <div class="result-box" id="copy-box">
+            Your generated copy will appear here...
+        </div>
+        <div class="image-box">
+            <img id="result-image" src="" alt="Generated Image">
+        </div>
+    </div>
+
+    <!-- Enhanced Prompt -->
+    <div class="card">
+        <h2>🔮 Enhanced Image Prompt</h2>
+        <div class="result-box" id="prompt-box">
+            Enhanced prompt will appear here...
+        </div>
+    </div>
+
+    <!-- History Section -->
+    <div class="card">
+        <h2>📚 Recent History</h2>
+        <button class="btn" onclick="loadHistory()">
+            🔄 Load History
+        </button>
+        <div id="history-box" style="margin-top:10px">
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let currentTaskId = null
+
+    async function generateContent() {
+        const brief = document.getElementById('brief').value
+        const platform = document.getElementById('platform').value
+        const persona = document.getElementById('persona').value
+
+        if (!brief) {
+            alert('Please enter a brief!')
+            return
+        }
+
+        document.getElementById('generate-btn').disabled = true
+        showStatus('loading', '⏳ Submitting job...')
+
+        try {
+            // Submit job
+            const response = await fetch('/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ brief, platform, persona })
+            })
+
+            const data = await response.json()
+            currentTaskId = data.task_id
+
+            showStatus('loading', `⏳ Job submitted! ID: ${data.task_id.slice(0,8)}...`)
+
+            // Poll for result
+            pollResult(data.task_id)
+
+        } catch (error) {
+            showStatus('error', `❌ Error: ${error.message}`)
+            document.getElementById('generate-btn').disabled = false
+        }
+    }
+
+    async function pollResult(taskId) {
+        const interval = setInterval(async () => {
+            try {
+                const response = await fetch(`/job/${taskId}`)
+                const data = await response.json()
+
+                if (data.status === 'processing') {
+                    showStatus('loading', `⏳ ${data.message}`)
+                }
+
+                else if (data.status === 'completed') {
+                    clearInterval(interval)
+                    const result = data.result
+
+                    // Show copy
+                    document.getElementById('copy-box').textContent = result.copy
+
+                    // Show enhanced prompt
+                    document.getElementById('prompt-box').textContent = result.enhanced_prompt
+
+                    // Show image
+                    const img = document.getElementById('result-image')
+                    img.src = result.image_url
+                    img.style.display = 'block'
+
+                    showStatus('success', '✅ Content generated successfully!')
+                    document.getElementById('generate-btn').disabled = false
+                }
+
+                else if (data.status === 'failed') {
+                    clearInterval(interval)
+                    showStatus('error', `❌ Failed: ${data.error}`)
+                    document.getElementById('generate-btn').disabled = false
+                }
+
+            } catch (error) {
+                clearInterval(interval)
+                showStatus('error', `❌ Error: ${error.message}`)
+                document.getElementById('generate-btn').disabled = false
+            }
+        }, 2000)
+    }
+
+    async function loadHistory() {
+        try {
+            const response = await fetch('/history')
+            const data = await response.json()
+            const box = document.getElementById('history-box')
+
+            if (data.history.length === 0) {
+                box.innerHTML = '<p style="color:#64748b">No history yet!</p>'
+                return
+            }
+
+            box.innerHTML = data.history.map(item => `
+                <div class="history-item">
+                    <p>📝 <strong>${item.brief}</strong></p>
+                    <p>📱 ${item.platform} | 🎭 ${item.persona}</p>
+                    <p style="color:#94a3b8; font-size:0.8rem">
+                        ${item.copy ? item.copy.slice(0, 100) + '...' : ''}
+                    </p>
+                </div>
+            `).join('')
+
+        } catch (error) {
+            console.error('Error loading history:', error)
+        }
+    }
+
+    function showStatus(type, message) {
+        const box = document.getElementById('status-box')
+        box.className = `status ${type}`
+        box.textContent = message
+        box.style.display = 'block'
+    }
+</script>
+
+</body>
+</html>
