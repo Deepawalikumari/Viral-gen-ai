@@ -2,21 +2,20 @@
 from fastapi import APIRouter
 from celery_app import celery_app
 from celery.result import AsyncResult
+from core.database import get_history
 
 router = APIRouter()
 
 @router.get("/job/{task_id}")
 async def get_job_status(task_id: str):
-    """
-    Poll this endpoint to check job status.
-    """
+    """Poll this endpoint to check job status."""
     task = AsyncResult(task_id, app=celery_app)
 
     if task.state == "PENDING":
         return {
             "task_id": task_id,
             "status": "pending",
-            "message": "Job is waiting to start..."
+            "message": "Job waiting to start..."
         }
 
     elif task.state == "PROGRESS":
@@ -40,7 +39,13 @@ async def get_job_status(task_id: str):
             "error": str(task.result)
         }
 
+    return {"task_id": task_id, "status": task.state}
+
+@router.get("/history")
+async def get_history_endpoint():
+    """Get recent generation history."""
+    history = get_history(limit=10)
     return {
-        "task_id": task_id,
-        "status": task.state
+        "count": len(history),
+        "history": history
     }
