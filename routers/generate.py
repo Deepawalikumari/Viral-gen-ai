@@ -2,6 +2,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from workers.image_worker import generate_content_task
+from core.database import create_job
 import uuid
 
 router = APIRouter()
@@ -17,7 +18,12 @@ async def generate(request: GenerateRequest):
     Submit generation job.
     Returns Job ID immediately! ✅
     """
-    job_id = str(uuid.uuid4())
+    # Create job in MongoDB
+    job_id = create_job(
+        brief=request.brief,
+        platform=request.platform,
+        persona=request.persona
+    )
 
     # Send to Celery worker
     task = generate_content_task.delay(
